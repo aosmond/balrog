@@ -34,14 +34,29 @@ def isSpecialURL(url, specialForceHosts):
 def isForbiddenUrl(url, product, allowlistedDomains):
     if allowlistedDomains is None:
         allowlistedDomains = []
-    domain = urlparse(url)[1]
+    parsedUrl = urlparse(url)
+    domain = parsedUrl[1]
     if domain not in allowlistedDomains:
         logging.warning("Forbidden domain: %s", domain)
         return True
-    if product not in allowlistedDomains[domain]:
+    allowlistedDomain = allowlistedDomains[domain]
+    if isinstance(allowlistedDomain, tuple):
+        if product in allowlistedDomain:
+            return False
         logging.warning("Forbidden domain for product %s: %s", product, domain)
-        return True
-    return False
+    elif isinstance(allowlistedDomain, object):
+        path = parsedUrl[2]
+        for pathPrefix in allowlistedDomain:
+            if not path.startswith(pathPrefix):
+                continue
+            if product in allowlistedDomain[pathPrefix]:
+                return False
+            logging.warning("Forbidden domain/path for product %s: %s (%s)", product, domain, path)
+            return True
+        logging.warning("Forbidden domain/path: %s (%s)", domain, path)
+    else:
+        logging.warning("Forbidden domain, malformed entry: %s", domain)
+    return True
 
 
 def getFallbackChannel(channel):
